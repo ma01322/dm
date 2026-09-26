@@ -41,6 +41,72 @@
   .nav-item:active { color:var(--primary); padding-left:6px; }
 
   /* ============================================================
+     SEARCH BOX (সবার উপরে, sticky)
+  ============================================================ */
+  .search-wrap {
+    position: sticky;
+    top: 61px;
+    z-index: 900;
+    background: var(--bg);
+    padding: 14px 0 12px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid transparent;
+    transition: border-color .2s;
+  }
+  .search-wrap.stuck {
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 6px 12px -8px rgba(0,0,0,.08);
+  }
+  .search-box { position: relative; display: flex; align-items: center; }
+  .search-box svg.search-icon {
+    position: absolute; left: 14px; width: 20px; height: 20px;
+    stroke: #94a3b8; fill: none; stroke-width: 2.2;
+    stroke-linecap: round; stroke-linejoin: round;
+    pointer-events: none; transition: .2s;
+  }
+  .search-box:focus-within svg.search-icon { stroke: var(--primary); }
+  #workSearch {
+    width: 100%; padding: 15px 44px 15px 44px;
+    border: 2px solid var(--border); border-radius: 14px;
+    font-size: 15px; font-weight: 500; outline: none;
+    background: #fff; color: var(--dark); transition: .25s;
+    box-sizing: border-box; font-family: inherit;
+    box-shadow: 0 2px 6px rgba(0,0,0,.02);
+  }
+  #workSearch:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(255,44,109,.1);
+  }
+  #workSearch::placeholder { color: #94a3b8; font-weight: 400; }
+  .search-clear {
+    position: absolute; right: 8px; width: 34px; height: 34px;
+    border: none; background: #f1f5f9; border-radius: 50%;
+    cursor: pointer; display: none; align-items: center;
+    justify-content: center; color: #64748b; font-size: 20px;
+    line-height: 1; transition: .2s; font-family: inherit;
+  }
+  .search-clear:hover { background: #fee2e2; color: #991b1b; }
+  .search-clear.show { display: flex; }
+  .search-empty {
+    display: none; text-align: center; padding: 40px 20px;
+    color: var(--text-muted); font-weight: 600; font-size: 15px;
+    background: #fff; border: 1px dashed var(--border);
+    border-radius: 14px;
+  }
+  .search-empty.show { display: block; }
+  .work-card.search-hidden { display: none !important; }
+  .work-card.search-match {
+    border-color: var(--primary);
+    box-shadow: 0 8px 22px rgba(255,44,109,.12);
+  }
+  .search-info {
+    font-size: 12px; color: var(--text-muted);
+    font-weight: 600; margin: 8px 2px 0;
+    display: none;
+  }
+  .search-info.show { display: block; }
+
+  /* ============================================================
      DUE CHECK MODAL
   ============================================================ */
   .due-modal { position:fixed; inset:0; z-index:99999; display:none; align-items:flex-end; justify-content:center; padding:0; }
@@ -156,6 +222,9 @@
     .dc-cell { padding:8px 10px; }
     .dc-cell span { font-size:10px; }
     .dc-cell b { font-size:13px; }
+    .search-wrap { top: 57px; }
+    #workSearch { font-size: 14px; padding: 14px 44px 14px 42px; }
+    .search-box svg.search-icon { left: 13px; width: 18px; height: 18px; }
   }
   @media (min-width: 640px) {
     .due-modal { align-items:center; padding:20px; }
@@ -206,6 +275,20 @@
 
 <!-- ===== MAIN CONTENT ===== -->
 <div class="container">
+
+  <!-- ===== SEARCH BOX (সবার উপরে) ===== -->
+  <div class="search-wrap" id="searchWrap">
+    <div class="search-box">
+      <svg class="search-icon" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="workSearch" placeholder="Search works... (e.g. topup, daraz, ff)" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="button" class="search-clear" id="searchClear" aria-label="Clear">&times;</button>
+    </div>
+    <div class="search-info" id="searchInfo"></div>
+  </div>
+
   <header class="section-header" data-aos="fade-down">
     <h2>
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
@@ -213,7 +296,7 @@
     </h2>
   </header>
 
-  <div class="works-list">
+  <div class="works-list" id="worksList">
     <div class="work-card" data-aos="fade-up">
       <div class="banner-box"><img src="https://iili.io/nRrNiIp.md.png" alt="Ghorerbazar same website"></div>
       <div class="card-body">
@@ -298,6 +381,8 @@
       </div>
     </div>
   </div>
+
+  <div class="search-empty" id="searchEmpty">🔍 কোনো কাজ খুঁজে পাওয়া যায়নি</div>
 </div>
 
 <!-- ===== DUE CHECK MODAL ===== -->
@@ -432,6 +517,103 @@
     });
     document.querySelectorAll('.click-sound').forEach(el => el.addEventListener('click', ()=>playClickSound()));
 
+    /* ============================================================
+       SEARCH WORKS — ম্যাচিং কার্ড সবার উপরে আসবে
+    ============================================================ */
+    const searchWrap = document.getElementById('searchWrap');
+    const searchInput = document.getElementById('workSearch');
+    const searchClear = document.getElementById('searchClear');
+    const searchInfo = document.getElementById('searchInfo');
+    const searchEmpty = document.getElementById('searchEmpty');
+    const worksList = document.getElementById('worksList');
+
+    // Original index store
+    const allCards = Array.from(worksList.querySelectorAll('.work-card'));
+    allCards.forEach((c, i) => {
+      c.dataset.origIndex = i;
+      // searchable text: title + alt + button text
+      const title = c.querySelector('.work-title')?.textContent || '';
+      const alt = c.querySelector('img')?.getAttribute('alt') || '';
+      c.dataset.searchText = (title + ' ' + alt).toLowerCase().trim();
+    });
+
+    function performSearch() {
+      const q = (searchInput.value || '').trim().toLowerCase();
+
+      // Clear button toggle
+      searchClear.classList.toggle('show', q.length > 0);
+
+      if (!q) {
+        // Reset — original order + all visible
+        allCards.forEach(c => {
+          c.classList.remove('search-hidden', 'search-match');
+        });
+        allCards
+          .slice()
+          .sort((a, b) => (+a.dataset.origIndex) - (+b.dataset.origIndex))
+          .forEach(c => worksList.appendChild(c));
+        searchEmpty.classList.remove('show');
+        searchInfo.classList.remove('show');
+        searchInfo.textContent = '';
+        return;
+      }
+
+      let matchCount = 0;
+      allCards.forEach(c => {
+        const isMatch = (c.dataset.searchText || '').includes(q);
+        c.classList.toggle('search-match', isMatch);
+        c.classList.toggle('search-hidden', !isMatch);
+        if (isMatch) matchCount++;
+      });
+
+      // Sort: matches first (top), non-matches last (kept in original order within groups)
+      allCards
+        .slice()
+        .sort((a, b) => {
+          const aM = a.classList.contains('search-match') ? 0 : 1;
+          const bM = b.classList.contains('search-match') ? 0 : 1;
+          if (aM !== bM) return aM - bM;
+          return (+a.dataset.origIndex) - (+b.dataset.origIndex);
+        })
+        .forEach(c => worksList.appendChild(c));
+
+      // Empty state
+      searchEmpty.classList.toggle('show', matchCount === 0);
+
+      // Info line
+      if (matchCount > 0) {
+        searchInfo.textContent = `✅ ${matchCount} টি কাজ পাওয়া গেছে — উপরে দেখানো হচ্ছে`;
+        searchInfo.classList.add('show');
+      } else {
+        searchInfo.classList.remove('show');
+        searchInfo.textContent = '';
+      }
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', performSearch);
+    }
+    if (searchClear) {
+      searchClear.addEventListener('click', function () {
+        searchInput.value = '';
+        performSearch();
+        searchInput.focus();
+        playClickSound();
+      });
+    }
+
+    // Sticky border effect
+    if (searchWrap) {
+      const checkStuck = () => {
+        const rect = searchWrap.getBoundingClientRect();
+        const navH = document.querySelector('.main-navbar')?.offsetHeight || 60;
+        searchWrap.classList.toggle('stuck', rect.top <= navH + 1);
+      };
+      window.addEventListener('scroll', checkStuck, { passive: true });
+      window.addEventListener('resize', checkStuck);
+      checkStuck();
+    }
+
     /* ===== DUE MODAL ===== */
     const dueModal = document.getElementById('dueModal');
     const dueOpenBtn = document.getElementById('openDueCheck');
@@ -555,7 +737,6 @@
         pwSubmitBtn.disabled = true;
         pwSubmitBtn.innerHTML = '<svg viewBox="0 0 24 24" style="animation:dcSpin .8s linear infinite;"><circle cx="12" cy="12" r="10" stroke-dasharray="30 60"/></svg> Verifying...';
 
-        // Small delay for UX
         await new Promise(r => setTimeout(r, 400));
 
         if (pw === DOWNLOAD_PASSWORD) {
